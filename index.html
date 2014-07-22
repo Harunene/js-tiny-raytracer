@@ -2,14 +2,16 @@
 <html>
 <head>
 
+<script language="javascript" src="math.js"></script>
+<script language="javascript" src="object.js"></script>
+
 <script>
 
 // 전역 옵션
-var SCREEN_WIDTH = 400;
-var SCREEN_HEIGHT = 400;
+var SCREEN_WIDTH = 300;
+var SCREEN_HEIGHT = 300;
 var FIELD_OF_VIEW = 40;
 var REFLECTION_LEVEL = Infinity;
-
 
 
 // 전역 변수
@@ -24,10 +26,8 @@ var eyepos ;
 var eyeray ;
 var eyecoord ;
 
-var objects ;
+var objects = [] ;
 var light ;
-
-var angle = 0;
 
 var pix, imgdata ;
 
@@ -55,64 +55,50 @@ function main()
   eyeat = new Point(0, 0, 0);
   eyepos = new Point(1700, -2400, 3100);
   eyeray = new Ray(eyepos, new Vector(eyepos, eyeat));
-  light = new Vector(0, 0, 7000);
+  light = new Vector(0, 0, 30000);
   eyecoord = new CoordinationSystem(eyeray, new Vector(0, 0, -1));
   
-  tmpsphere1 = new Sphere( new Point(   0, -900,    0), 500, new Vector(1.0, 0.2, 0.2));
-  tmpsphere2 = new Sphere( new Point( 900, -900, -400), 500, new Vector(0.2, 1.0, 0.2));
-  tmpsphere3 = new Sphere( new Point(-900, -900, -400), 500, new Vector(0.2, 0.2, 1.0));
-  tmpsphere4 = new Sphere( new Point(   0,    0, -600), 500, new Vector(0.2, 1.0, 1.0));
-  tmpsphere5 = new Sphere( new Point( 900,    0,    0), 500, new Vector(1.0, 0.2, 1.0));
-  tmpsphere6 = new Sphere( new Point(-900,    0,    0), 500, new Vector(1.0, 1.0, 0.2));
-  tmpsphere7 = new Sphere( new Point(   0,  900,    0), 500, new Vector(0.5, 1.0, 0.2));
-  tmpsphere8 = new Sphere( new Point( 900,  900, -400), 500, new Vector(0.2, 0.5, 1.0));
-  tmpsphere9 = new Sphere( new Point(-900,  900, -400), 500, new Vector(1.0, 0.2, 0.5));
-  triangle1 = new Triangle( 
+  objects.push( new Sphere( new Point(   0, -900,    0), 500, new Vector(1.0, 0.2, 0.2)) );
+  objects.push( new Sphere( new Point( 900, -900, -400), 500, new Vector(0.2, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point(-900, -900, -400), 500, new Vector(0.2, 0.2, 1.0)) );
+  objects.push( new Sphere( new Point(   0,    0, -600), 500, new Vector(0.2, 1.0, 1.0)) );
+  objects.push( new Sphere( new Point( 900,    0,    0), 500, new Vector(1.0, 0.2, 1.0)) );
+  objects.push( new Sphere( new Point(-900,    0,    0), 500, new Vector(1.0, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point(   0,  900,    0), 500, new Vector(0.5, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point( 900,  900, -400), 500, new Vector(0.2, 0.5, 1.0)) );
+  objects.push( new Sphere( new Point(-900,  900, -400), 500, new Vector(1.0, 0.2, 0.5)) );
+  objects.push( new Triangle( 
     new Point(3000, 3000, -500), 
     new Point(-3000, 3000, -500), 
     new Point(3000, -3000, -500), 
     new Vector(.2, .4, .8), 
     new Vector(.8, .2, .4), 
     new Vector(.4, .8, .2)
-  );
-  triangle2 = new Triangle( 
+  ) );
+  objects.push( new Triangle( 
     new Point(-3000, -3000, -500), 
     new Point(3000, -3000, -500), 
     new Point(-3000, 3000, -500), 
     new Vector(1, 1, 0), 
     new Vector(.4, .8, .2), 
     new Vector(.8, .2, .4)
-  );
-  triangle3 = new Triangle( 
+  ) );
+  objects.push( new Triangle( 
     new Point(15000, 15000, -800), 
     new Point(-15000, 15000, -800), 
     new Point(15000, -15000, -800), 
     new Vector(.644, .9375, .7929), 
     new Vector(.644, .9375, .7929), 
     new Vector(.644, .9375, .7929)
-  );
-  triangle4 = new Triangle( 
+  ) );
+  objects.push( new Triangle( 
     new Point(-15000, -15000, -800), 
     new Point(15000, -15000, -800), 
     new Point(-15000, 15000, -800), 
     new Vector(.644, .9375, .7929), 
     new Vector(.644, .9375, .7929), 
     new Vector(.644, .9375, .7929)
-  );
-
-  objects = new Array( tmpsphere1, 
-             tmpsphere2, 
-             tmpsphere3, 
-             tmpsphere4, 
-             tmpsphere5, 
-             tmpsphere6, 
-             tmpsphere7, 
-             tmpsphere8, 
-             tmpsphere9, 
-             triangle1, 
-             triangle2, 
-             triangle3, 
-             triangle4);
+  ) );
   
   refreshTimer = setInterval("refresh()", 100);
   draw();
@@ -148,9 +134,7 @@ function draw_inner()
     {
       tmpvec = new Vector(x, y, SCREEN_DISTANCE);
       tmpray = new Ray(eyepos, eyecoord.worldize(tmpvec));
-      
       tmpcolor = getColor(tmpray, REFLECTION_LEVEL);
-
       pix[xy] = tmpcolor.x*255; pix[xy+1] = tmpcolor.y*255; pix[xy+2] = tmpcolor.z*255;
     }
     if (y <= SCREEN_HEIGHT/2)
@@ -168,16 +152,14 @@ function draw_inner()
   }
 }
 
-function getColor(tmpray, recursive)
+function getCollisionObject(ray, objects)
 {
-  var tmpcolor = new Vector(1, 1, 1);
   var min_t = Infinity;
-  var min_index = -1;
+  var min_index = undefined;
   var length = objects.length;
   for (var i = 0; i < length; i++)
   {
-    
-    if (objects[i].intersection(tmpray))
+    if (objects[i].checkIntersection(ray))
     {
       if (min_t > objects[i].firstT && objects[i].firstT > EPS)
       {
@@ -186,32 +168,50 @@ function getColor(tmpray, recursive)
       }
     }
   }
-  if (min_index == -1)
-    return tmpcolor;
+  return min_index;
+}
 
-  tmpcolor=objects[min_index].color.multi(objects[min_index].gradient());
-  
-  var shadow_min_t = Infinity;
-  var shadow_min_index = -1;
-  var shadow_ray = new Ray(light, new Vector(light, objects[min_index].firstPoint));
-  var shadow_value = 1;
-  var shadow_object = objects[min_index];
-  var highlight_value = 0;
-  
+function checkShadowObject(ray, objects, index_of_me)
+{
+  var min_t = Infinity;
+  var min_index = undefined;
+  var length = objects.length;
   for (var i = 0; i < length; i++)
-  {  
-    if (i == min_index) continue;
-    if (objects[i].intersection(shadow_ray))
+  {
+    if (i == index_of_me) continue;
+    if (objects[i].checkIntersection(ray))
     {
-      if (shadow_min_t > objects[i].firstT && objects[i].firstT > 0 && objects[i].firstT < 1)
+      if (min_t > objects[i].firstT && objects[i].firstT > 0 && objects[i].firstT < 1)
       {
-        shadow_min_t = objects[i].firstT;
-        shadow_min_index = i;
+        min_t = objects[i].firstT;
+        min_index = i;
       }
     }
   }
-  if (shadow_min_index == -1)
-    highlight_value += shadow_object.highLight(tmpray.O);
+  return !min_index;
+}
+
+function getColor(tmpray, recursive)
+{
+  var tmpcolor = new Vector(1, 1, 1);
+  var obj;
+  var i;
+  
+  i = getCollisionObject(tmpray, objects);
+  if (i == undefined)
+    return tmpcolor;
+    
+  obj = objects[i];
+
+  tmpcolor=obj.color.multi(obj.getGradient());
+  
+  var shadow_ray = new Ray(light, new Vector(light, obj.firstPoint));
+  var shadow_value = 1;
+  var shadow_object = obj;
+  var highlight_value = 0;
+  
+  if (checkShadowObject(shadow_ray, objects, i))
+    highlight_value += shadow_object.getHighLight(tmpray.O);
   else
     shadow_value *= 0.7;
     
@@ -233,254 +233,6 @@ function getColor(tmpray, recursive)
 }
 
 </script>
-
-<script>
-// Math 클래스 정의
-
-// Vector 클래스
-function Vector(x, y, z) {
-  this.class = "Vector";
-
-  // 두 점을 이용한 벡터 생성의 경우 (생성자 오버로딩)
-  if (arguments.length == 2)
-  {
-    this.x = y.x-x.x; this.y = y.y-x.y; this.z = y.z-x.z;
-  }
-  else
-  {
-    this.x = x; this.y = y; this.z = z;
-  }
-}
-Vector.prototype.clone = function() {
-  return new Vector(this.x, this.y, this.z);
-}
-Vector.prototype.plus = function(vec) { return new Vector(this.x+vec.x, this.y+vec.y, this.z+vec.z); }
-Vector.prototype.minus = function(vec) { 
-    if (arguments.length == 0)
-      return new Vector(-this.x, -this.y, -this.z); 
-    else
-      return new Vector(this.x-vec.x, this.y-vec.y, this.z-vec.z); 
-}
-Vector.prototype.multi = function(s) { return new Vector(this.x*s, this.y*s, this.z*s); }
-Vector.prototype.div = function(s) { return new Vector(this.x/s, this.y/s, this.z/s); }
-Vector.prototype.dot = function(vec) { return this.x*vec.x + this.y*vec.y + this.z*vec.z; }
-Vector.prototype.cross = function(vec) { return new Vector(this.y*vec.z-this.z*vec.y,this.z*vec.x-this.x*vec.z,this.x*vec.y-this.y*vec.x); }
-Vector.prototype.norm = function() {
-    return Math.sqrt(this.x*this.x+this.y*this.y+this.z*this.z);
-}
-Vector.prototype.normalize = function() {
-    norm = this.norm();
-    this.x /= norm;
-    this.y /= norm;
-    this.z /= norm;
-    return this.clone();
-}
-Vector.prototype.normal = function() {
-    norm = this.norm();
-    return new Vector(this.x/norm,this.y/norm,this.z/norm);
-}
-
-Vector.prototype.toString = function() {
-    return "Vector (" + this.x + ", " + this.y + ", " + this.z + ")";
-}
-
-// Point 클래스
-function Point(x, y, z) {
-  this.class = "Point";
-  this.x = x; this.y = y; this.z = z;
-}
-Point.prototype.clone = function() {
-  return new Point(this.x, this.y, this.z);
-}
-Point.prototype.plus = function(pt) { return new Point(this.x+pt.x, this.y+pt.y, this.z+pt.z); }
-Point.prototype.minus = function(pt) { return new Point(this.x-pt.x, this.y-pt.y, this.z-pt.z); }
-Point.prototype.multi = function(s) { return new Point(this.x*s, this.y*s, this.z*s); }
-Point.prototype.div = function(s) { return new Point(this.x/s, this.y/s, this.z/s); }
-Point.prototype.dot = function(pt) { return this.x*pt.x + this.y*pt.y + this.z*pt.z; }
-Point.prototype.cross = function(pt) { return new Point(this.y*pt.z-this.z*pt.y,this.z*pt.x-this.x*pt.z,this.x*pt.y-this.y*pt.x); }
-Point.prototype.norm = function() {
-  return Math.sqrt(this.x*this.x+this.y*this.y+this.z*this.z);
-}
-Point.prototype.toString = function() {
-  return "Point (" + this.x + ", " + this.y + ", " + this.z + ")";
-}
-
-// Ray 클래스
-function Ray(pt, vec) {
-  this.class = "Ray";
-
-  this.V = vec.clone();
-  this.O = pt.clone();
-}
-Ray.prototype.copy = function(ray) {
-    return new Ray( ray.pt.clone(), ray.vec.clone() );
-}
-Ray.prototype.at = function(t) {
-    return this.O.plus(this.V.multi(t));
-}
-Ray.prototype.toString = function() {
-    return "Ray p : " + this.O + ", v : " + this.V;
-}
-
-// CoordinationSystem(좌표계) 클래스
-function CoordinationSystem(ray, upvec) {
-  this.class = "CoordinationSystem";
-
-  w = new Vector(0, 0, 0);
-  u = new Vector(0, 0, 0);
-  v = new Vector(0, 0, 0);
-
-  w = ray.V;
-  w.normalize();
-  u = upvec.cross(w);
-  u.normalize();
-  v = w.cross(u);
-  v.normalize();
-
-  this.O = ray.O;
-  this.N1 = new Vector(u.x, v.x, w.x);
-  this.N2 = new Vector(u.y, v.y, w.y);
-  this.N3 = new Vector(u.z, v.z, w.z);
-}
-CoordinationSystem.prototype.worldize = function(obj) {
-  var x = this.N1.dot(obj);
-  var y = this.N2.dot(obj);
-  var z = this.N3.dot(obj);
-  if (obj.class == "Vector") return new Vector(x, y, z);
-  if (obj.class == "Point") return new Vector(x+O.x, y+O.y, z+O.z);
-  return error("CoordinationSystem::Worldize() : 인자의 타입은 Vector나 Point만 올 수 있습니다.");
-}
-
-</script>
-
-
-
-<script>
-// Object 클래스 정의
-
-// Sphere 클래스
-function Sphere(pt, radius, c) {
-  this.class = "Sphere";
-
-  this.p = pt.clone();
-  this.radius = radius;
-  this.firstT = 0;
-  this.firstPoint = new Vector(0, 0, 0);
-  this.color = c.clone();
-}
-Sphere.prototype.intersection = function (ray) {
-  tmpvec = ray.O.minus(this.p);
-  a = ray.V.dot(ray.V);
-  b = ray.V.dot(tmpvec);
-  c = tmpvec.dot(tmpvec) - this.radius*this.radius;
-  d = b*b-a*c;
-  if (d>=0)
-  {
-    this.firstT = (-b-Math.sqrt(d))/a;
-    this.firstPoint = ray.at(this.firstT);
-    if (this.firstT < 0)
-      return false;
-    return true;
-  }
-  return false;
-}
-
-Sphere.prototype.gradient = function() {
-  
-  var tmpvec = this.firstPoint.minus(this.p);
-  var tmpvec2 = light.minus(this.firstPoint);
-
-  var tmptheta = tmpvec.dot(tmpvec2) / (tmpvec.norm() * tmpvec2.norm());
-  tmptheta = tmptheta * 0.5 + 0.5;
-
-  return tmptheta;
-
-}
-  
-Sphere.prototype.getReflectVector = function(startPos) {
-  var inVec = startPos.minus();
-  var N = new Vector(this.p, this.firstPoint);
-  return new Vector(N.multi((N.dot(inVec))/(N.dot(N))*2), inVec);
-}
-  
-Sphere.prototype.highLight = function(startpos) {
-  var reflect = this.getReflectVector(light);
-  var eyevec = new Vector(this.firstPoint, startpos);
-  var tmp = reflect.dot(eyevec)/(reflect.norm()*eyevec.norm());
-  tmp = (tmp>0)?Math.pow(tmp,31):0;
-  return (tmp>0.80)?1:tmp;
-}
-
-// Triangle 클래스
-function Triangle(p, p1, p2, c, c1, c2) {
-  this.class = "Triangle";
-
-  this.p = p.clone();
-  this.vec1 = p1.minus(p);
-  this.vec2 = p2.minus(p);
-  this.N = this.vec1.cross(this.vec2);
-  var d = (this.vec1.cross(this.vec2)).dot(this.N);
-  this.u = this.vec2.cross(this.N).div(d);
-  this.v = this.vec1.cross(this.N).div(-d);
-
-  this.firstT = 0;
-  this.firstPoint = new Vector(0, 0, 0);
-  this.color = new Vector(0, 0, 0);
-  this.c = c.clone();
-  this.c1 = c1.clone();
-  this.c2 = c2.clone();
-
-}
-
-Triangle.prototype.intersection = function (ray) {
-  this.firstT = -1;
-  var d = this.N.dot(ray.V);
-  
-  if (d == 0) 
-    return false;
-  
-  this.firstT = this.N.dot(this.p.minus(ray.O)) / this.N.dot(ray.V);
-  this.firstPoint = ray.O.plus(ray.V.multi(this.firstT));
-  
-  var p = this.firstPoint.minus(this.p);
-  var u = this.u.dot(p);
-  var v = this.v.dot(p);
-  if ( (u < 0) || (v < 0) || (u + v > 1) )
-  {
-    this.firstT = -1;
-    return false;
-  }
-  
-  this.color = this.c.multi(1-u-v).plus(this.c1.multi(u)).plus(this.c2.multi(v));
-  return true;
-}
-
-Triangle.prototype.gradient = function() {
-  
-  var tmpvec = light.minus(this.firstPoint);    
-  var tmptheta = this.N.dot(tmpvec) / (this.N.norm() * tmpvec.norm());
-  tmptheta = tmptheta * 0.5 + 0.5;
-
-  return tmptheta;
-
-}
-
-Triangle.prototype.getReflectVector = function(startPos) {
-  var inVec = startPos.minus();
-  return new Vector(this.N.multi((this.N.dot(inVec))/(this.N.dot(this.N))*2), inVec);
-}
-
-Triangle.prototype.highLight = function(startpos) {
-  var reflect = this.getReflectVector(light);
-  var eyevec = new Vector(this.firstPoint, startpos);
-  var tmp = reflect.dot(eyevec)/(reflect.norm()*eyevec.norm());
-  return (tmp>0)?Math.pow(tmp,31):0;
-}
-
-
-</script>
-
-
 
 <script>
 function error(msg)
