@@ -7,14 +7,14 @@
 
 <script>
 
-// 전역 옵션
+// global options
 var SCREEN_WIDTH = 300;
 var SCREEN_HEIGHT = 300;
 var FIELD_OF_VIEW = 40;
 var REFLECTION_LEVEL = Infinity;
 
 
-// 전역 변수
+// global variable (should be moved)
 var SCREEN_DISTANCE;
 
 var EPS = 0.0000001;
@@ -31,13 +31,10 @@ var light ;
 
 var pix, imgdata ;
 
-var x, y, xy ;
-
 var refreshTimer ;  
 
 var startTick ;
 
-// 이벤트 정의
 window.onload = function() {
   canvas = document.createElement("canvas");
   canvas.setAttribute('width', SCREEN_WIDTH);
@@ -49,7 +46,6 @@ window.onload = function() {
   main();
 }
 
-// 메인 함수
 function main()
 {
   eyeat = new Point(0, 0, 0);
@@ -105,7 +101,7 @@ function main()
 }
 
 
-function refresh()
+function refresh(y)
 {
   context.putImageData(imgdata, 0,0);
   hello.innerText = Math.round(y/(SCREEN_HEIGHT)*100+50) + "%";
@@ -118,100 +114,109 @@ function draw()
   imgdata = context.getImageData(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT) ;
   pix = imgdata.data ;
   SCREEN_DISTANCE = SCREEN_WIDTH / (2*Math.tan(FIELD_OF_VIEW*Math.PI / 360)) ;
-  y = -SCREEN_HEIGHT / 2 ;
-  setTimeout("draw_inner()", 1) ;
-}
-
-function draw_inner()
-{
-  var delta = 1;
-
-  for (var it = 0; it < delta; it++)
+  var thread_count = 4;
+  for (i = 0; i < thread_count; i++)
   {
-    xy = 4*SCREEN_WIDTH*(y+SCREEN_HEIGHT/2);
-
-    for (x = -SCREEN_WIDTH/2; x < SCREEN_WIDTH/2; x++, xy+=4)
-    {
-      tmpvec = new Vector(x, y, SCREEN_DISTANCE);
-      tmpray = new Ray(eyepos, eyecoord.worldize(tmpvec));
-      tmpcolor = getColor(tmpray, REFLECTION_LEVEL);
-      pix[xy] = tmpcolor.x*255; pix[xy+1] = tmpcolor.y*255; pix[xy+2] = tmpcolor.z*255;
-    }
-    if (y <= SCREEN_HEIGHT/2)
-    {
-      setTimeout("draw_inner()", 1);
-    }
-    else
-    {
-      refresh();
-      hello.innerText += " " + ((new Date()).getTime() - startTick.getTime()) + "ms";
-      clearInterval(refreshTimer);
-    }
-
-    y++;
+    setTimeout(draw_inner, 1, i, -SCREEN_HEIGHT / 2, thread_count);
   }
 }
 
-function getCollisionObject(ray, objects)
+function draw_inner(offset, y, thread_count)
+{
+  xy = 4*SCREEN_WIDTH*(y+SCREEN_HEIGHT/2) + offset*4;
+
+  for (x = -SCREEN_WIDTH/2 + offset; x < SCREEN_WIDTH/2; x+=thread_count, xy+=4*thread_count)
+  {
+    tmpvec = new Vector(x, y, SCREEN_DISTANCE);
+    tmpray = new Ray(eyepos, eyecoord.worldize(tmpvec));
+    tmpcolor = getColor(tmpray, REFLECTION_LEVEL);
+    pix[xy] = tmpcolor.x*255; pix[xy+1] = tmpcolor.y*255; pix[xy+2] = tmpcolor.z*255;
+  }
+  y++;
+
+  if (y <= SCREEN_HEIGHT/2)
+  {
+    setTimeout(draw_inner, 1, offset, y, thread_count);
+  }
+  if (offset == 0)
+  {
+    refresh(y);
+    hello.innerText += " " + ((new Date()).getTime() - startTick.getTime()) + "ms";
+    clearInterval(refreshTimer);
+  }
+}
+
+function getCollisionInfo(ray, objects)
 {
   var min_t = Infinity;
   var min_index = undefined;
   var length = objects.length;
   for (var i = 0; i < length; i++)
   {
-    if (objects[i].checkIntersection(ray))
+    firstT = objects[i].checkIntersection(ray);
+    if (firstT != undefined)
     {
-      if (min_t > objects[i].firstT && objects[i].firstT > EPS)
+      if (min_t > firstT && firstT > EPS)
       {
-        min_t = objects[i].firstT;
+        min_t = firstT;
         min_index = i;
       }
     }
   }
-  return min_index;
+  if (min_index == undefined) return undefined;
+  return {
+    firstObj : objects[min_index],
+    firstPoint : ray.at(min_t)
+  };
 }
 
-function checkShadowObject(ray, objects, index_of_me)
+function checkShadowObject(ray, objects, me)
 {
   var min_t = Infinity;
   var min_index = undefined;
   var length = objects.length;
   for (var i = 0; i < length; i++)
   {
-    if (i == index_of_me) continue;
-    if (objects[i].checkIntersection(ray))
+    if (objects[i] == me) continue;
+    firstT = objects[i].checkIntersection(ray);
+    if (firstT != undefined)
     {
-      if (min_t > objects[i].firstT && objects[i].firstT > 0 && objects[i].firstT < 1)
+      if (min_t > firstT && firstT > 0 && firstT < 1)
       {
-        min_t = objects[i].firstT;
+        min_t = firstT;
         min_index = i;
       }
     }
   }
-  return !min_index;
+  if (min_index == undefined) return undefined;
+  return {
+    firstObj : objects[min_index],
+    firstPoint : ray.at(min_t)
+  };
 }
 
 function getColor(tmpray, recursive)
 {
   var tmpcolor = new Vector(1, 1, 1);
   var obj;
-  var i;
+  var first_point;
   
-  i = getCollisionObject(tmpray, objects);
-  if (i == undefined)
+  var info = getCollisionInfo(tmpray, objects);
+  if (info == undefined)
     return tmpcolor;
     
-  obj = objects[i];
+  obj = info.firstObj;
+  first_point = info.firstPoint;
 
-  tmpcolor=obj.color.multi(obj.getGradient());
-  
-  var shadow_ray = new Ray(light, new Vector(light, obj.firstPoint));
+  tmpcolor=obj.getColor(first_point).multi(obj.getGradient(first_point));
+  var shadow_ray = new Ray(light, new Vector(light, first_point));
   var shadow_value = 1;
   var shadow_object = obj;
+  var shadow_first_point;
   var highlight_value = 0;
   
-  if (checkShadowObject(shadow_ray, objects, i))
-    highlight_value += shadow_object.getHighLight(tmpray.O);
+  if (!checkShadowObject(shadow_ray, objects, shadow_object))
+    highlight_value += shadow_object.getHighLight(tmpray.O, first_point);
   else
     shadow_value *= 0.7;
     
@@ -225,10 +230,10 @@ function getColor(tmpray, recursive)
   if (recursive > 0)
   {
     tmpcolor = getColor(new Ray(
-      shadow_object.firstPoint, shadow_object.getReflectVector(tmpray.V.minus())
+      first_point, shadow_object.getReflectVector(tmpray.V.minus(), first_point)
     ), recursive-1).multi(0.3).plus(tmpcolor.multi((1-0.3)));
   }
-  
+
   return tmpcolor;
 }
 
@@ -237,7 +242,7 @@ function getColor(tmpray, recursive)
 <script>
 function error(msg)
 {
-  document.write("에러발생 : ");
+  document.write("error occurred : ");
   document.write(msg);
   return -1;
 }
