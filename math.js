@@ -1,13 +1,11 @@
 
-// Math 클래스 정의
+// Math Classes
 
-// Vector 클래스
+// Vector Class
 function Vector(x, y, z) {
-  this.class = "Vector";
-
-  // 두 점을 이용한 벡터 생성의 경우 (생성자 오버로딩)
   if (arguments.length == 2)
   {
+  // Create vector from two points
     this.x = y.x-x.x; this.y = y.y-x.y; this.z = y.z-x.z;
   }
   else
@@ -49,9 +47,8 @@ Vector.prototype = {
   }
 }
 
-// Point 클래스
+// Point Class
 function Point(x, y, z) {
-  this.class = "Point";
   this.x = x; this.y = y; this.z = z;
 }
 Point.prototype = {
@@ -72,10 +69,8 @@ Point.prototype = {
   }
 }
 
-// Ray 클래스
+// Ray Class
 function Ray(pt, vec) {
-  this.class = "Ray";
-
   this.V = vec.clone();
   this.O = pt.clone();
 }
@@ -91,10 +86,8 @@ Ray.prototype = {
   }
 }
 
-// CoordinationSystem(좌표계) 클래스
+// Coordination System Class
 function CoordinationSystem(ray, upvec) {
-  this.class = "CoordinationSystem";
-
   w = new Vector(0, 0, 0);
   u = new Vector(0, 0, 0);
   v = new Vector(0, 0, 0);
@@ -115,7 +108,7 @@ CoordinationSystem.prototype.worldize = function(obj) {
   var x = this.N1.dot(obj);
   var y = this.N2.dot(obj);
   var z = this.N3.dot(obj);
-  if (obj.class == "Vector") return new Vector(x, y, z);
-  if (obj.class == "Point") return new Vector(x+O.x, y+O.y, z+O.z);
-  return error("CoordinationSystem::Worldize() : 인자의 타입은 Vector나 Point만 올 수 있습니다.");
+  if (obj instanceof Vector) return new Vector(x, y, z);
+  if (obj instanceof Point) return new Vector(x+O.x, y+O.y, z+O.z);
+  return error("CoordinationSystem::Worldize() : Only Vector or Point can be accepted.");
 }

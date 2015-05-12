@@ -1,10 +1,8 @@
 
-// Object 클래스 정의
+// Object Classes
 
-// Sphere 클래스
+// Sphere CLass
 function Sphere(pt, radius, c) {
-  this.class = "Sphere";
-
   this.p = pt.clone();
   this.radius = radius;
   this.color = c.clone();
@@ -49,10 +47,8 @@ Sphere.prototype = {
   },
 }
 
-// Triangle 클래스
+// Triangle Class
 function Triangle(p, p1, p2, c, c1, c2) {
-  this.class = "Triangle";
-
   this.p = p.clone();
   this.vec1 = p1.minus(p);
   this.vec2 = p2.minus(p);
