@@ -11,7 +11,7 @@
 var SCREEN_WIDTH = 300;
 var SCREEN_HEIGHT = 300;
 var FIELD_OF_VIEW = 40;
-var REFLECTION_LEVEL = Infinity;
+var REFLECTION_LEVEL = 3;
 
 
 // global variable (should be moved)
@@ -114,7 +114,7 @@ function draw()
   imgdata = context.getImageData(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT) ;
   pix = imgdata.data ;
   SCREEN_DISTANCE = SCREEN_WIDTH / (2*Math.tan(FIELD_OF_VIEW*Math.PI / 360)) ;
-  var thread_count = 4;
+  var thread_count = 1;
   for (i = 0; i < thread_count; i++)
   {
     setTimeout(draw_inner, 1, i, -SCREEN_HEIGHT / 2, thread_count);
@@ -123,16 +123,19 @@ function draw()
 
 function draw_inner(offset, y, thread_count)
 {
-  xy = 4*SCREEN_WIDTH*(y+SCREEN_HEIGHT/2) + offset*4;
+  var delta = 30
 
-  for (x = -SCREEN_WIDTH/2 + offset; x < SCREEN_WIDTH/2; x+=thread_count, xy+=4*thread_count)
+  for (var it = 0; it < delta && y <= SCREEN_HEIGHT/2; it++, y++)
   {
-    tmpvec = new Vector(x, y, SCREEN_DISTANCE);
-    tmpray = new Ray(eyepos, eyecoord.worldize(tmpvec));
-    tmpcolor = getColor(tmpray, REFLECTION_LEVEL);
-    pix[xy] = tmpcolor.x*255; pix[xy+1] = tmpcolor.y*255; pix[xy+2] = tmpcolor.z*255;
+    var xy = 4*SCREEN_WIDTH*(y+SCREEN_HEIGHT/2) + offset*4;
+    for (x = -SCREEN_WIDTH/2 + offset; x < SCREEN_WIDTH/2; x+=thread_count, xy+=4*thread_count)
+    {
+      tmpvec = new Vector(x, y, SCREEN_DISTANCE);
+      tmpray = new Ray(eyepos, eyecoord.worldize(tmpvec));
+      tmpcolor = getColor(tmpray, REFLECTION_LEVEL);
+      pix[xy] = tmpcolor.x*255; pix[xy+1] = tmpcolor.y*255; pix[xy+2] = tmpcolor.z*255;
+    }
   }
-  y++;
 
   if (y <= SCREEN_HEIGHT/2)
   {
