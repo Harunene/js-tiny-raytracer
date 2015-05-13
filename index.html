@@ -4,13 +4,14 @@
 
 <script language="javascript" src="math.js"></script>
 <script language="javascript" src="object.js"></script>
+<script language="javascript" src="util.js"></script>
 
 <script>
 
 // global options
-var SCREEN_WIDTH = 300;
-var SCREEN_HEIGHT = 300;
-var FIELD_OF_VIEW = 40;
+var SCREEN_WIDTH = 600;
+var SCREEN_HEIGHT = 600;
+var FIELD_OF_VIEW = 45;
 var REFLECTION_LEVEL = 3;
 
 
@@ -27,7 +28,7 @@ var eyeray ;
 var eyecoord ;
 
 var objects = [] ;
-var light ;
+var lights ;
 
 var pix, imgdata ;
 
@@ -49,20 +50,38 @@ window.onload = function() {
 function main()
 {
   eyeat = new Point(0, 0, 0);
-  eyepos = new Point(1700, -2400, 3100);
-  eyeray = new Ray(eyepos, new Vector(eyepos, eyeat));
-  light = new Vector(0, 0, 30000);
+  var angle = 25;
+  var x = Math.cos(angle / 180 * Math.PI) * 2500;
+  var y = Math.sin(angle / 180 * Math.PI) * 2500;
+  eyepos = new Point(x, y, 3100);
+  // eyepos = eyepos.multi(2);
+  eyeray = new Ray(eyepos, Vector.fromPoints(eyepos, eyeat));
+  lights = [
+    new Point(   0,  600, 600),
+    new Point(   0, -600, 600),
+    new Point( 600,    0, 600),
+    new Point(-600,    0, 600),
+    new Point(   0,  3600, 600),
+    new Point(   0, -3600, 600),
+    new Point( 3600,    0, 600),
+    new Point(-3600,    0, 600),
+  ];
   eyecoord = new CoordinationSystem(eyeray, new Vector(0, 0, -1));
+
+  objects.push( new Sphere( new Point( 900,  900,  300), 300, new Vector(0.0, 0.2, 1.0)) );
+  objects.push( new Sphere( new Point( 900, -900,  300), 300, new Vector(0.0, 0.2, 1.0)) );
+  objects.push( new Sphere( new Point(-900,  900,  300), 300, new Vector(0.0, 0.2, 1.0)) );
+  objects.push( new Sphere( new Point(-900, -900,  300), 300, new Vector(0.0, 0.2, 1.0)) );
   
-  objects.push( new Sphere( new Point(   0, -900,    0), 500, new Vector(1.0, 0.2, 0.2)) );
-  objects.push( new Sphere( new Point( 900, -900, -400), 500, new Vector(0.2, 1.0, 0.2)) );
-  objects.push( new Sphere( new Point(-900, -900, -400), 500, new Vector(0.2, 0.2, 1.0)) );
-  objects.push( new Sphere( new Point(   0,    0, -600), 500, new Vector(0.2, 1.0, 1.0)) );
-  objects.push( new Sphere( new Point( 900,    0,    0), 500, new Vector(1.0, 0.2, 1.0)) );
-  objects.push( new Sphere( new Point(-900,    0,    0), 500, new Vector(1.0, 1.0, 0.2)) );
-  objects.push( new Sphere( new Point(   0,  900,    0), 500, new Vector(0.5, 1.0, 0.2)) );
-  objects.push( new Sphere( new Point( 900,  900, -400), 500, new Vector(0.2, 0.5, 1.0)) );
-  objects.push( new Sphere( new Point(-900,  900, -400), 500, new Vector(1.0, 0.2, 0.5)) );
+  objects.push( new Sphere( new Point(   0,    0, -600), 900, new Vector(0.2, 1.0, 1.0)) );
+  objects.push( new Sphere( new Point(   0,  900,    0), 300, new Vector(0.5, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point(   0, -900,    0), 300, new Vector(0.5, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point( 900,    0,    0), 300, new Vector(0.5, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point(-900,    0,    0), 300, new Vector(0.5, 1.0, 0.2)) );
+  objects.push( new Sphere( new Point( 900,  900, -400), 450, new Vector(1.0, 0.0, 0.0)) );
+  objects.push( new Sphere( new Point( 900, -900, -400), 450, new Vector(1.0, 0.0, 0.0)) );
+  objects.push( new Sphere( new Point(-900,  900, -400), 450, new Vector(1.0, 0.0, 0.0)) );
+  objects.push( new Sphere( new Point(-900, -900, -400), 450, new Vector(1.0, 0.0, 0.0)) );
   objects.push( new Triangle( 
     new Point(3000, 3000, -500), 
     new Point(-3000, 3000, -500), 
@@ -200,9 +219,11 @@ function checkShadowObject(ray, objects, me)
 
 function getColor(tmpray, recursive)
 {
-  var tmpcolor = new Vector(1, 1, 1);
+  var tmpcolor = new Vector(1, .8, .8);
   var obj;
   var first_point;
+
+  var light_strength = 0.3;
   
   var info = getCollisionInfo(tmpray, objects);
   if (info == undefined)
@@ -211,30 +232,43 @@ function getColor(tmpray, recursive)
   obj = info.firstObj;
   first_point = info.firstPoint;
 
-  tmpcolor=obj.getColor(first_point).multi(obj.getGradient(first_point));
-  var shadow_ray = new Ray(light, new Vector(light, first_point));
+  var gradient_value = 0;
+  tmpcolor=obj.getColor(first_point);
+
+  for (i in lights)
+  {
+    var light = lights[i];
+    gradient_value += light_strength*(obj.getGradient(first_point, light));
+  }
+  tmpcolor = tmpcolor.multi(gradient_value);
+
+  var shadow_ray;
   var shadow_value = 1;
-  var shadow_object = obj;
   var shadow_first_point;
   var highlight_value = 0;
   
-  if (!checkShadowObject(shadow_ray, objects, shadow_object))
-    highlight_value += shadow_object.getHighLight(tmpray.O, first_point);
-  else
-    shadow_value *= 0.7;
-    
+  for (i in lights)
+  {
+    var light = lights[i];
+    shadow_ray = new Ray(light, Vector.fromPoints(light, first_point));
+    if (!checkShadowObject(shadow_ray, objects, obj))
+      highlight_value += obj.getHighLight(tmpray.O, first_point, light) * 1;
+    else
+      shadow_value *= 0.8;
+  }
   highlight_value = (highlight_value > 1) ? 1 : highlight_value;
-  tmpcolor = tmpcolor.multi(1-highlight_value).plus(new Vector(1, 1, 1).multi(highlight_value));
   tmpcolor = tmpcolor.multi(shadow_value);
+  tmpcolor = tmpcolor.multi(1).plus(new Vector(1, 1, 1).multi(highlight_value));
   if (tmpcolor.x > 1) tmpcolor.x = 1;
   if (tmpcolor.y > 1) tmpcolor.y = 1;
   if (tmpcolor.z > 1) tmpcolor.z = 1;
   
   if (recursive > 0)
   {
+    var reflection_ratio = 0.3;
     tmpcolor = getColor(new Ray(
-      first_point, shadow_object.getReflectVector(tmpray.V.minus(), first_point)
-    ), recursive-1).multi(0.3).plus(tmpcolor.multi((1-0.3)));
+      first_point, obj.getReflectVector(tmpray.V.negative(), first_point)
+    ), recursive-1).multi(reflection_ratio).plus(tmpcolor.multi((1-reflection_ratio)));
   }
 
   return tmpcolor;

@@ -3,26 +3,19 @@
 
 // Vector Class
 function Vector(x, y, z) {
-  if (arguments.length == 2)
-  {
-  // Create vector from two points
-    this.x = y.x-x.x; this.y = y.y-x.y; this.z = y.z-x.z;
-  }
-  else
-  {
-    this.x = x; this.y = y; this.z = z;
-  }
+  this.x = x; this.y = y; this.z = z;
+}
+Vector.fromPoints = function(p1, p2) {
+  return new Vector(p2.x-p1.x, p2.y-p1.y, p2.z-p1.z);
 }
 Vector.prototype = {
   clone : function() {
     return new Vector(this.x, this.y, this.z);
   },
   plus : function(vec) { return new Vector(this.x+vec.x, this.y+vec.y, this.z+vec.z); },
+  negative : function() { return new Vector(-this.x, -this.y, -this.z); },
   minus : function(vec) { 
-      if (arguments.length == 0)
-        return new Vector(-this.x, -this.y, -this.z); 
-      else
-        return new Vector(this.x-vec.x, this.y-vec.y, this.z-vec.z); 
+    return new Vector(this.x-vec.x, this.y-vec.y, this.z-vec.z); 
   },
   multi : function(s) { return new Vector(this.x*s, this.y*s, this.z*s); },
   div : function(s) { return new Vector(this.x/s, this.y/s, this.z/s); },

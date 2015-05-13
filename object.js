@@ -26,7 +26,7 @@ Sphere.prototype = {
   getColor : function(firstPoint) {
     return this.color;
   },
-  getGradient : function(firstPoint) {
+  getGradient : function(firstPoint, light) {
     var tmpvec = firstPoint.minus(this.p);
     var tmpvec2 = light.minus(firstPoint);
     var tmptheta = tmpvec.dot(tmpvec2) / (tmpvec.norm() * tmpvec2.norm());
@@ -34,18 +34,19 @@ Sphere.prototype = {
     return tmptheta;
   },
   getReflectVector : function(startPos, firstPoint) {
-    var inVec = startPos.minus();
-    var N = new Vector(this.p, firstPoint);
-    return new Vector(N.multi((N.dot(inVec))/(N.dot(N))*2), inVec);
+    var inVec = Vector.fromPoints(startPos, firstPoint);
+    var N = Vector.fromPoints(this.p, firstPoint);
+    return Vector.fromPoints(N.multi((N.dot(inVec))/(N.dot(N))*2), inVec);
   },
-  getHighLight : function(startpos, firstPoint) {
+  getHighLight : function(startpos, firstPoint, light) {
     var reflect = this.getReflectVector(light, firstPoint);
-    var eyevec = new Vector(firstPoint, startpos);
+    var eyevec = Vector.fromPoints(firstPoint, startpos);
     var tmp = reflect.dot(eyevec)/(reflect.norm()*eyevec.norm());
-    tmp = (tmp>0)?Math.pow(tmp,31):0;
+    tmp = (tmp>0)?Math.pow(tmp,127):0;
     return (tmp>0.80)?1:tmp;
   },
 }
+Sphere.prototype.constructor = Sphere;
 
 // Triangle Class
 function Triangle(p, p1, p2, c, c1, c2) {
@@ -82,20 +83,22 @@ Triangle.prototype = {
     var v = this.v.dot(p);
     return this.c.multi(1-u-v).plus(this.c1.multi(u)).plus(this.c2.multi(v));
   },
-  getGradient : function(firstPoint) {
+  getGradient : function(firstPoint, light) {
     var tmpvec = light.minus(firstPoint);    
     var tmptheta = this.N.dot(tmpvec) / (this.N.norm() * tmpvec.norm());
     tmptheta = tmptheta * 0.5 + 0.5;
     return tmptheta;
   },
-  getReflectVector : function(startPos) {
-    var inVec = startPos.minus();
-    return new Vector(this.N.multi((this.N.dot(inVec))/(this.N.dot(this.N))*2), inVec);
+  getReflectVector : function(startPos, firstPoint) {
+    var inVec = Vector.fromPoints(startPos, firstPoint);
+    return Vector.fromPoints(this.N.multi((this.N.dot(inVec))/(this.N.dot(this.N))*2), inVec);
   },
-  getHighLight : function(startpos, firstPoint) {
-    var reflect = this.getReflectVector(light);
-    var eyevec = new Vector(firstPoint, startpos);
+  getHighLight : function(startpos, firstPoint, light) {
+    var reflect = this.getReflectVector(light, firstPoint);
+    var eyevec = Vector.fromPoints(firstPoint, startpos);
     var tmp = reflect.dot(eyevec)/(reflect.norm()*eyevec.norm());
-    return (tmp>0)?Math.pow(tmp,31):0;
+    return (tmp>0)?Math.pow(tmp,127):0;
+    return 0;
   },
 }
+Triangle.prototype.constructor = Triangle;
